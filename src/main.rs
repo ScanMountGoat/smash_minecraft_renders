@@ -16,7 +16,7 @@ fn main() {
     let chara_3_custom = minecraft_render::create_chara_image(
         &output,
         &chara_3,
-        0.64225626f32,
+        1.28451252f32,
         -456.55612f32,
         11.757321f32,
     );
@@ -27,7 +27,7 @@ fn main() {
     let chara_4_custom = minecraft_render::create_chara_image(
         &output,
         &chara_4,
-        0.116441004f32,
+        0.232882008f32,
         -90.16959f32,
         9.084564f32,
     );
@@ -38,7 +38,7 @@ fn main() {
     let chara_6_custom = minecraft_render::create_chara_image(
         &output,
         &chara_6,
-        0.469014f32,
+        0.938028f32,
         -480.87906f32,
         -96.13269f32,
     );
