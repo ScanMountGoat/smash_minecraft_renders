@@ -1,9 +1,7 @@
-use image::png::PngDecoder;
 use image::DynamicImage;
 use image::ImageBuffer;
 use image::Rgba;
 use image::RgbaImage;
-use std::io::Cursor;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
@@ -12,9 +10,7 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
         .into_rgba();
 
     // At least 16 bit precision is required for the texture sampling to look decent.
-    let uvs_data = Cursor::new(include_bytes!("../uvs.png").to_vec());
-    let uvs_decoder = PngDecoder::new(uvs_data).unwrap();
-    let uvs = match DynamicImage::from_decoder(uvs_decoder).unwrap() {
+    let uvs = match image::load_from_memory(include_bytes!("../uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
@@ -73,6 +69,7 @@ fn sample_texture_apply_lighting(
             let v = normalize_u16_to_f32(uv[1]);
             let alpha = uv[3];
 
+            // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
             let (texture_x, texture_y) = interpolate_nearest(
                 u,
                 1f32 - v,
@@ -80,6 +77,7 @@ fn sample_texture_apply_lighting(
                 texture_to_sample.dimensions().0,
             );
             let texture_color = texture_to_sample.get_pixel(texture_x, texture_y);
+
             let lighting_color = lighting.get_pixel(x, y);
 
             // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
@@ -145,7 +143,10 @@ mod tests {
         assert_eq!(interpolate_nearest(-1f32, -1f32, 8u32, 8u32), (0u32, 0u32));
         assert_eq!(interpolate_nearest(0f32, 1.5f32, 8u32, 8u32), (0u32, 7u32));
         assert_eq!(interpolate_nearest(1.5f32, 0f32, 8u32, 8u32), (7u32, 0u32));
-        assert_eq!(interpolate_nearest(1.5f32, 1.5f32, 8u32, 8u32), (7u32, 7u32));
+        assert_eq!(
+            interpolate_nearest(1.5f32, 1.5f32, 8u32, 8u32),
+            (7u32, 7u32)
+        );
     }
 
     #[test]
