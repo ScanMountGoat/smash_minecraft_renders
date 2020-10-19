@@ -73,15 +73,21 @@ fn sample_texture_apply_lighting(
             let v = normalize_u16_to_f32(uv[1]);
             let alpha = uv[3];
 
-            let col_color = sample_pixel_nearest(&texture_to_sample, u, 1f32 - v);
+            let (texture_x, texture_y) = interpolate_nearest(
+                u,
+                1f32 - v,
+                texture_to_sample.dimensions().0,
+                texture_to_sample.dimensions().0,
+            );
+            let texture_color = texture_to_sample.get_pixel(texture_x, texture_y);
             let lighting_color = lighting.get_pixel(x, y);
 
             // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
             // Multiplying by 4 to undo the compression is a bit too bright, so use 2 instead.
             // Perform all calculations in floating point to avoid overflow.
-            let r = (col_color[0] as f32 / 255f32) * (lighting_color[0] as f32 / 255f32) * 2f32;
-            let g = (col_color[1] as f32 / 255f32) * (lighting_color[1] as f32 / 255f32) * 2f32;
-            let b = (col_color[2] as f32 / 255f32) * (lighting_color[2] as f32 / 255f32) * 2f32;
+            let r = (texture_color[0] as f32 / 255f32) * (lighting_color[0] as f32 / 255f32) * 2f32;
+            let g = (texture_color[1] as f32 / 255f32) * (lighting_color[1] as f32 / 255f32) * 2f32;
+            let b = (texture_color[2] as f32 / 255f32) * (lighting_color[2] as f32 / 255f32) * 2f32;
 
             // Convert back to the proper format for the image.
             let r = to_u8_clamped(r);
@@ -95,14 +101,16 @@ fn sample_texture_apply_lighting(
     output
 }
 
-fn sample_pixel_nearest(image: &ImageBuffer<Rgba<u8>, Vec<u8>>, x: f32, y: f32) -> Rgba<u8> {
-    let x = x * image.width() as f32;
-    let y = y * image.height() as f32;
+fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
+    // This isn't really "nearest" neighbor because the lower index is always chosen.
+    // TODO: figure out why round() instead of floor() produces artifacts on some regions.
+    let x = x * width as f32;
+    let y = y * height as f32;
 
     // Clamp to the edges for out of bounds indices.
-    let left = std::cmp::min(x.floor() as u32, image.width() - 1);
-    let bottom = std::cmp::min(y.floor() as u32, image.height() - 1);
-    *image.get_pixel(left, bottom)
+    let x = std::cmp::min(x.floor() as u32, width - 1);
+    let y = std::cmp::min(y.floor() as u32, height - 1);
+    (x, y)
 }
 
 fn normalize_u16_to_f32(u: u16) -> f32 {
@@ -117,5 +125,40 @@ fn to_u8_clamped(x: f32) -> u8 {
         255u8
     } else {
         result as u8
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_interpolate_nearest_8x8_edges() {
+        assert_eq!(interpolate_nearest(0f32, 0f32, 8u32, 8u32), (0u32, 0u32));
+        assert_eq!(interpolate_nearest(0f32, 1f32, 8u32, 8u32), (0u32, 7u32));
+        assert_eq!(interpolate_nearest(1f32, 0f32, 8u32, 8u32), (7u32, 0u32));
+        assert_eq!(interpolate_nearest(1f32, 1f32, 8u32, 8u32), (7u32, 7u32));
+    }
+
+    #[test]
+    fn test_interpolate_nearest_out_of_bounds() {
+        assert_eq!(interpolate_nearest(-1f32, -1f32, 8u32, 8u32), (0u32, 0u32));
+        assert_eq!(interpolate_nearest(0f32, 1.5f32, 8u32, 8u32), (0u32, 7u32));
+        assert_eq!(interpolate_nearest(1.5f32, 0f32, 8u32, 8u32), (7u32, 0u32));
+        assert_eq!(interpolate_nearest(1.5f32, 1.5f32, 8u32, 8u32), (7u32, 7u32));
+    }
+
+    #[test]
+    fn test_normalize_u16_to_f32() {
+        assert_eq!(normalize_u16_to_f32(0u16), 0f32);
+        assert_eq!(normalize_u16_to_f32(65535u16), 1f32);
+    }
+
+    #[test]
+    fn test_to_u8_clamped() {
+        assert_eq!(to_u8_clamped(0f32), 0u8);
+        assert_eq!(to_u8_clamped(0.5f32), 127u8);
+        assert_eq!(to_u8_clamped(1f32), 255u8);
+        assert_eq!(to_u8_clamped(1.01f32), 255u8);
     }
 }
