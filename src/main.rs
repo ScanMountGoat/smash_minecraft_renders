@@ -9,8 +9,9 @@ fn main() {
     // Create UI renders from the output render.
     // The transformations are hardcoded based on the output render resolution.
     // The final render is scaled down to match the appropriate sizes.
-    let chara_3 =
-        minecraft_render::create_rgba_from_png_raw(include_bytes!("../chara_3_pickel_00.png"));
+    let chara_3 = image::load_from_memory(include_bytes!("../chara_3_pickel_00.png"))
+        .unwrap()
+        .into_rgba();
 
     let chara_3_custom = minecraft_render::create_chara_image(
         &output,
@@ -20,8 +21,9 @@ fn main() {
         11.757321f32,
     );
 
-    let chara_4 =
-        minecraft_render::create_rgba_from_png_raw(include_bytes!("../chara_4_pickel_00.png"));
+    let chara_4 = image::load_from_memory(include_bytes!("../chara_4_pickel_00.png"))
+        .unwrap()
+        .into_rgba();
     let chara_4_custom = minecraft_render::create_chara_image(
         &output,
         &chara_4,
@@ -30,8 +32,9 @@ fn main() {
         9.084564f32,
     );
 
-    let chara_6 =
-        minecraft_render::create_rgba_from_png_raw(include_bytes!("../chara_6_pickel_00.png"));
+    let chara_6 = image::load_from_memory(include_bytes!("../chara_6_pickel_00.png"))
+        .unwrap()
+        .into_rgba();
     let chara_6_custom = minecraft_render::create_chara_image(
         &output,
         &chara_6,

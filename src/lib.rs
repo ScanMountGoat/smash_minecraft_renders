@@ -3,12 +3,13 @@ use image::DynamicImage;
 use image::ImageBuffer;
 use image::Rgba;
 use image::RgbaImage;
-use std::include_bytes;
 use std::io::Cursor;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
-    let lighting = create_rgba_from_png_raw(include_bytes!("../lighting.png"));
+    let lighting = image::load_from_memory(include_bytes!("../lighting.png"))
+        .unwrap()
+        .into_rgba();
 
     // At least 16 bit precision is required for the texture sampling to look decent.
     let uvs_data = Cursor::new(include_bytes!("../uvs.png").to_vec());
@@ -55,15 +56,6 @@ pub fn create_chara_image(
     }
 
     output
-}
-
-/// Creates an RGBA u8 image from the raw bytes of a PNG file.
-/// The png file should be 8 bits per pixel and RGBA.
-pub fn create_rgba_from_png_raw(data: &[u8]) -> RgbaImage {
-    let data = Cursor::new(data);
-    let decoder = PngDecoder::new(data).unwrap();
-    let image = DynamicImage::from_decoder(decoder).unwrap().into_rgba();
-    image
 }
 
 fn sample_texture_apply_lighting(
