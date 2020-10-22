@@ -2,6 +2,9 @@ use image::DynamicImage;
 use image::ImageBuffer;
 use image::Rgba;
 use image::RgbaImage;
+use imageproc::geometric_transformations::warp_into_with;
+use imageproc::geometric_transformations::Interpolation;
+use std::cmp::min;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
@@ -15,7 +18,7 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
 
-    sample_texture_apply_lighting(&uvs, &lighting, &minecraft_skin_texture)
+    sample_texture_apply_lighting(&minecraft_skin_texture, &uvs, &lighting)
 }
 
 /// Creates a render with the dimensions and alpha of the reference chara file
@@ -32,89 +35,106 @@ pub fn create_chara_image(
         chara_reference.dimensions().1,
     );
 
+    // Align the render with the target chara image.
     // warp_into_with defines the preimage, so invert the transformation.
-    imageproc::geometric_transformations::warp_into_with(
+    warp_into_with(
         &render,
         |x, y| ((x - translate_x) / scale, (y - translate_y) / scale),
-        imageproc::geometric_transformations::Interpolation::Bilinear,
+        Interpolation::Bilinear,
         Rgba([0u8, 0u8, 0u8, 0u8]),
         &mut output,
     );
 
     // Use the reference image's alpha for appropriate masking on some portraits.
-    // TODO: There may be a cleaner/more efficient way to do this.
-    for x in 0..output.width() {
-        for y in 0..output.height() {
-            let current = output.get_pixel_mut(x, y);
-            let alpha = chara_reference.get_pixel(x, y)[3];
-            *current = Rgba([current[0], current[1], current[2], alpha]);
-        }
-    }
+    copy_alpha(&mut output, &chara_reference);
 
     output
 }
 
+fn copy_alpha(target: &mut RgbaImage, source: &RgbaImage) {
+    // TODO: There may be a cleaner/more efficient way to do this.
+    for x in 0..target.width() {
+        for y in 0..target.height() {
+            let current = target.get_pixel_mut(x, y);
+            let alpha = source.get_pixel(x, y)[3];
+            *current = Rgba([current[0], current[1], current[2], alpha]);
+        }
+    }
+}
+
 fn sample_texture_apply_lighting(
+    texture: &RgbaImage,
     uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
     lighting: &RgbaImage,
-    texture_to_sample: &RgbaImage,
 ) -> RgbaImage {
-    // Create the rendered result.
     let mut output = ImageBuffer::new(uvs.dimensions().0, uvs.dimensions().1);
 
     for x in 0..output.width() {
         for y in 0..output.height() {
-            let uv = *uvs.get_pixel(x, y);
-            let u = normalize_u16_to_f32(uv[0]);
-            let v = normalize_u16_to_f32(uv[1]);
-            let alpha = uv[3];
-
-            // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
-            let (texture_x, texture_y) = interpolate_nearest(
-                u,
-                1f32 - v,
-                texture_to_sample.dimensions().0,
-                texture_to_sample.dimensions().0,
-            );
-            let texture_color = texture_to_sample.get_pixel(texture_x, texture_y);
-
-            let lighting_color = lighting.get_pixel(x, y);
-
-            // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
-            // Multiplying by 4 to undo the compression is a bit too bright, so use 2 instead.
-            // Perform all calculations in floating point to avoid overflow.
-            let r = (texture_color[0] as f32 / 255f32) * (lighting_color[0] as f32 / 255f32) * 2f32;
-            let g = (texture_color[1] as f32 / 255f32) * (lighting_color[1] as f32 / 255f32) * 2f32;
-            let b = (texture_color[2] as f32 / 255f32) * (lighting_color[2] as f32 / 255f32) * 2f32;
-
-            // Convert back to the proper format for the image.
-            let r = to_u8_clamped(r);
-            let g = to_u8_clamped(g);
-            let b = to_u8_clamped(b);
-
-            *output.get_pixel_mut(x, y) = Rgba([r, g, b, alpha as u8]);
+            *output.get_pixel_mut(x, y) = calculate_render_pixel(x, y, uvs, lighting, texture);
         }
     }
 
     output
 }
 
-fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
-    // This isn't really "nearest" neighbor because the lower index is always chosen.
-    // TODO: figure out why round() instead of floor() produces artifacts on some regions.
-    let x = x * width as f32;
-    let y = y * height as f32;
+fn calculate_render_pixel(
+    x: u32,
+    y: u32,
+    uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
+    lighting: &RgbaImage,
+    texture: &RgbaImage,
+) -> Rgba<u8> {
+    let uv = uvs.get_pixel(x, y);
+    let (u, v, _) = normalize_rgb_u16(uv);
+    let alpha = uv[3];
 
-    // Clamp to the edges for out of bounds indices.
-    let x = std::cmp::min(x.floor() as u32, width - 1);
-    let y = std::cmp::min(y.floor() as u32, height - 1);
-    (x, y)
+    // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
+    let (tex_width, tex_height) = texture.dimensions();
+    let (texture_x, texture_y) = interpolate_nearest(u, 1f32 - v, tex_width, tex_height);
+
+    // Perform all calculations in floating point to avoid overflow.
+    let (tex_r, tex_g, tex_b) = normalize_rgb_u8(texture.get_pixel(texture_x, texture_y));
+    let (light_r, light_g, light_b) = normalize_rgb_u8(lighting.get_pixel(x, y));
+
+    // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
+    // Multiplying by 4 is a bit too bright, so use 2 instead.
+    let apply_lighting = |color: f32, light: f32| color * light * 2f32;
+    let get_result = |color, light| to_u8_clamped(apply_lighting(color, light));
+
+    Rgba([
+        get_result(tex_r, light_r),
+        get_result(tex_g, light_g),
+        get_result(tex_b, light_b),
+        alpha as u8,
+    ])
 }
 
-fn normalize_u16_to_f32(u: u16) -> f32 {
-    // Unsigned normalization.
+fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
+    // Cast to u32 to always choose the lower index.
+    // Clamp to the edges for out of bounds indices.
+    let nearest = |f: f32, max_val: u32| min((f * max_val as f32) as u32, max_val - 1);
+    (nearest(x, width), nearest(y, height))
+}
+
+fn normalize_rgb_u8(pixel: &Rgba<u8>) -> (f32, f32, f32) {
     // 0u16 -> 0.0f32, 65535u16 -> 1.0f32
-    u as f32 / 65535f32
+    let normalize = |u| u as f32 / 255f32;
+    (
+        normalize(pixel[0]),
+        normalize(pixel[1]),
+        normalize(pixel[2]),
+    )
+}
+
+fn normalize_rgb_u16(pixel: &Rgba<u16>) -> (f32, f32, f32) {
+    // 0u16 -> 0.0f32, 65535u16 -> 1.0f32
+    let normalize = |u| u as f32 / 65535f32;
+    (
+        normalize(pixel[0]),
+        normalize(pixel[1]),
+        normalize(pixel[2]),
+    )
 }
 
 fn to_u8_clamped(x: f32) -> u8 {
@@ -150,9 +170,27 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_u16_to_f32() {
-        assert_eq!(normalize_u16_to_f32(0u16), 0f32);
-        assert_eq!(normalize_u16_to_f32(65535u16), 1f32);
+    fn test_normalize_u8() {
+        assert_eq!(
+            normalize_rgb_u8(&Rgba([0u8, 0u8, 0u8, 0u8])),
+            (0f32, 0f32, 0f32)
+        );
+        assert_eq!(
+            normalize_rgb_u8(&Rgba([255u8, 255u8, 255u8, 255u8])),
+            (1f32, 1f32, 1f32)
+        );
+    }
+
+    #[test]
+    fn test_normalize_u16() {
+        assert_eq!(
+            normalize_rgb_u16(&Rgba([0u16, 0u16, 0u16, 0u16])),
+            (0f32, 0f32, 0f32)
+        );
+        assert_eq!(
+            normalize_rgb_u16(&Rgba([65535u16, 65535u16, 65535u16, 65535u16])),
+            (1f32, 1f32, 1f32)
+        );
     }
 
     #[test]
