@@ -111,9 +111,10 @@ fn calculate_render_pixel(
 }
 
 fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
-    // Cast to u32 to always choose the lower index.
+    // Nearest neighbor interpolation often performs some sort of rounding.
+    // UVs are snapped to pixel corners in the exported UV map, so just floor the UVs instead.
     // Clamp to the edges for out of bounds indices.
-    let nearest = |f: f32, max_val: u32| min((f * max_val as f32) as u32, max_val - 1);
+    let nearest = |f: f32, max_val: u32| min((f * max_val as f32).floor() as u32, max_val - 1);
     (nearest(x, width), nearest(y, height))
 }
 
