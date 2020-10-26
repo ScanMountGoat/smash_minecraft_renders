@@ -162,11 +162,14 @@ fn normalize_rgba_u16(pixel: &Rgba<u16>) -> (f32, f32, f32, f32) {
 }
 
 fn to_u8_clamped(x: f32) -> u8 {
-    let result = x * 255f32;
-    if result > 255f32 {
-        255u8
+    // Pick the nearest integer so values close to 1.0 are still converted to 255u8.
+    let result = (x * 255f32).round();
+    if result < 0.0f32 {
+        return 0u8;
+    } else if result > 255f32 {
+        return 255u8;
     } else {
-        result as u8
+        return result as u8;
     }
 }
 
@@ -217,9 +220,11 @@ mod tests {
     }
 
     #[test]
-    fn test_to_u8_clamped() {
+    fn test_to_u8_clamped() {        
+        assert_eq!(to_u8_clamped(0.999f32), 255u8);
+        assert_eq!(to_u8_clamped(-1.5f32), 0u8);
         assert_eq!(to_u8_clamped(0f32), 0u8);
-        assert_eq!(to_u8_clamped(0.5f32), 127u8);
+        assert_eq!(to_u8_clamped(0.5f32), 128u8);
         assert_eq!(to_u8_clamped(1f32), 255u8);
         assert_eq!(to_u8_clamped(1.01f32), 255u8);
     }
