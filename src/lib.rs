@@ -93,8 +93,8 @@ fn calculate_render_pixel(
     texture: &RgbaImage,
 ) -> Rgba<u8> {
     // Get texture coordinates for both uv layers.
-    let (u1, v1, _, alpha1) = normalize_rgba_u16(uvs.get_pixel(x, y));
-    let (u2, v2, _, alpha2) = normalize_rgba_u16(uvs_layer2.get_pixel(x, y));
+    let (u1, v1, _, alpha_layer1) = normalize_rgba_u16(uvs.get_pixel(x, y));
+    let (u2, v2, _, alpha_layer2) = normalize_rgba_u16(uvs_layer2.get_pixel(x, y));
 
     // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
     let (tex_width, tex_height) = texture.dimensions();
@@ -102,9 +102,9 @@ fn calculate_render_pixel(
     let (texture_x2, texture_y2) = interpolate_nearest(u2, 1f32 - v2, tex_width, tex_height);
 
     // Perform all calculations in floating point to avoid overflow.
-    let (tex_r1, tex_g1, tex_b1, tex_a1) =
+    let (tex_r1, tex_g1, tex_b1, tex_alpha1) =
         normalize_rgba_u8(texture.get_pixel(texture_x1, texture_y1));
-    let (tex_r2, tex_g2, tex_b2, tex_a2) =
+    let (tex_r2, tex_g2, tex_b2, tex_alpha2) =
         normalize_rgba_u8(texture.get_pixel(texture_x2, texture_y2));
 
     let (light_r1, light_g1, light_b1, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
@@ -114,14 +114,17 @@ fn calculate_render_pixel(
     let apply_lighting = |color: f32, light: f32| color * light * 2f32;
     let alpha_blend = |val1: f32, val2: f32, alpha: f32| val1 * (1f32 - alpha) + val2 * alpha;
 
-    // TODO: Alpha blend second layer.
-    let get_result = |color1, color2, light, alpha| apply_lighting(color1, light);
+    // TODO: Second layer lighting?
+    let get_result = |color1, color2, light, alpha| {
+        let layer1 = apply_lighting(color1, light);
+        let layer2 = color2;
+        alpha_blend(layer1, layer2, alpha)
+    };
 
-    let r_final = get_result(tex_r1, tex_r2, light_r1, tex_a2);
-    let g_final = get_result(tex_g1, tex_g2, light_g1, tex_a2);
-    let b_final = get_result(tex_b1, tex_b2, light_b1, tex_a2);
-    // TODO: Combine alpha from both layers.
-    let a_final = alpha1;
+    let r_final = get_result(tex_r1, tex_r2, light_r1, tex_alpha2);
+    let g_final = get_result(tex_g1, tex_g2, light_g1, tex_alpha2);
+    let b_final = get_result(tex_b1, tex_b2, light_b1, tex_alpha2);
+    let a_final = (alpha_layer1 * tex_alpha1) + (alpha_layer2 * tex_alpha2);
 
     Rgba([
         to_u8_clamped(r_final),
@@ -220,7 +223,7 @@ mod tests {
     }
 
     #[test]
-    fn test_to_u8_clamped() {        
+    fn test_to_u8_clamped() {
         assert_eq!(to_u8_clamped(0.999f32), 255u8);
         assert_eq!(to_u8_clamped(-1.5f32), 0u8);
         assert_eq!(to_u8_clamped(0f32), 0u8);
