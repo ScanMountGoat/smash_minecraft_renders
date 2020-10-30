@@ -4,7 +4,7 @@ use image::Rgba;
 use image::RgbaImage;
 use imageproc::geometric_transformations::warp_into_with;
 use imageproc::geometric_transformations::Interpolation;
-use std::cmp::{max, min};
+use std::cmp::min;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
@@ -17,12 +17,60 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let uvs_layer2 = match image::load_from_memory(include_bytes!("../uvs2.png")).unwrap() {
+    let head_uvs2 = match image::load_from_memory(include_bytes!("../head_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let chest_uvs2 = match image::load_from_memory(include_bytes!("../chest_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let leg_l_uvs2 = match image::load_from_memory(include_bytes!("../leg_l_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let leg_r_uvs2 = match image::load_from_memory(include_bytes!("../leg_r_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let arm_l_uvs2 = match image::load_from_memory(include_bytes!("../arm_l_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let arm_r_uvs2 = match image::load_from_memory(include_bytes!("../arm_r_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
 
-    sample_texture_apply_lighting(&minecraft_skin_texture, &uvs, &uvs_layer2, &lighting)
+    let mut output = ImageBuffer::new(uvs.dimensions().0, uvs.dimensions().1);
+
+    // TODO: Do this without loops?
+    // There may be a way to optimize this using multiple threads.
+    // Create base layer.
+    for x in 0..output.width() {
+        for y in 0..output.height() {
+            *output.get_pixel_mut(x, y) =
+                calculate_base_layer(x, y, &uvs, &lighting, minecraft_skin_texture);
+        }
+    }
+
+    // TODO: Apply lighting to the second layer.
+    // It may be better to light after blending to avoid lit pixels 
+    // being discarded due to 0 alpha or being obscured.
+
+    // Layers are blended independently because it isn't known ahead of time
+    // what layers will be used and what layers will occlude other layers.
+    // The order layers are blended is critical.
+    // TODO: Implement some form of sorting to handle layer and intersecting geometry.
+    // TODO: Bake a depth map?
+    blend_layer_with_base(&mut output, &head_uvs2, minecraft_skin_texture);
+    blend_layer_with_base(&mut output, &arm_l_uvs2, minecraft_skin_texture);
+    blend_layer_with_base(&mut output, &arm_r_uvs2, minecraft_skin_texture);
+    blend_layer_with_base(&mut output, &chest_uvs2, minecraft_skin_texture);
+    blend_layer_with_base(&mut output, &leg_l_uvs2, minecraft_skin_texture);
+    blend_layer_with_base(&mut output, &leg_r_uvs2, minecraft_skin_texture);
+
+    output
 }
 
 /// Creates a render with the dimensions and alpha of the reference chara file
@@ -55,6 +103,36 @@ pub fn create_chara_image(
     output
 }
 
+fn blend_layer_with_base(
+    base: &mut RgbaImage,
+    layer_uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
+    texture: &RgbaImage,
+) {
+    for x in 0..base.width() {
+        for y in 0..base.height() {
+            let (current_r, current_g, current_b, current_a) =
+                normalize_rgba_u8(base.get_pixel(x, y));
+
+            let (u, v, _, uv_alpha) = normalize_rgba_u16(layer_uvs.get_pixel(x, y));
+            let head_color = sample_texture(texture, u, v);
+            let (head_r, head_g, head_b, head_a) = normalize_rgba_u8(head_color);
+
+            // Use the uv map alpha as well to prevent blending outside the masked region.
+            let r = alpha_blend(current_r, head_r, head_a * uv_alpha);
+            let g = alpha_blend(current_g, head_g, head_a * uv_alpha);
+            let b = alpha_blend(current_b, head_b, head_a * uv_alpha);
+            let alpha_final = current_a + head_a * uv_alpha;
+
+            *base.get_pixel_mut(x, y) = Rgba([
+                to_u8_clamped(r),
+                to_u8_clamped(g),
+                to_u8_clamped(b),
+                to_u8_clamped(alpha_final),
+            ]);
+        }
+    }
+}
+
 fn copy_alpha(target: &mut RgbaImage, source: &RgbaImage) {
     // TODO: There may be a cleaner/more efficient way to do this.
     for x in 0..target.width() {
@@ -66,65 +144,42 @@ fn copy_alpha(target: &mut RgbaImage, source: &RgbaImage) {
     }
 }
 
-fn sample_texture_apply_lighting(
-    texture: &RgbaImage,
-    uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
-    uvs_layer2: &ImageBuffer<Rgba<u16>, Vec<u16>>,
-    lighting: &RgbaImage,
-) -> RgbaImage {
-    let mut output = ImageBuffer::new(uvs.dimensions().0, uvs.dimensions().1);
-
-    for x in 0..output.width() {
-        for y in 0..output.height() {
-            *output.get_pixel_mut(x, y) =
-                calculate_render_pixel(x, y, uvs, uvs_layer2, lighting, texture);
-        }
-    }
-
-    output
+// TODO: Use a generic type?
+// This will work for f64 as well.
+// Integer types may not work because of overflow.
+fn alpha_blend(val1: f32, val2: f32, alpha: f32) -> f32 {
+    val1 * (1f32 - alpha) + val2 * alpha
 }
 
-fn calculate_render_pixel(
+// TODO: There's probably a more generic type than RgbaImage that supports width/height and indexing.
+fn sample_texture(image: &RgbaImage, u: f32, v: f32) -> &Rgba<u8> {
+    // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
+    let (x, y) = interpolate_nearest(u, 1f32 - v, image.dimensions().0, image.dimensions().1);
+    image.get_pixel(x, y)
+}
+
+fn calculate_base_layer(
     x: u32,
     y: u32,
     uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
-    uvs_layer2: &ImageBuffer<Rgba<u16>, Vec<u16>>,
     lighting: &RgbaImage,
     texture: &RgbaImage,
 ) -> Rgba<u8> {
     // Get texture coordinates for both uv layers.
-    let (u1, v1, _, alpha_layer1) = normalize_rgba_u16(uvs.get_pixel(x, y));
-    let (u2, v2, _, alpha_layer2) = normalize_rgba_u16(uvs_layer2.get_pixel(x, y));
-
-    // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
-    let (tex_width, tex_height) = texture.dimensions();
-    let (texture_x1, texture_y1) = interpolate_nearest(u1, 1f32 - v1, tex_width, tex_height);
-    let (texture_x2, texture_y2) = interpolate_nearest(u2, 1f32 - v2, tex_width, tex_height);
+    let (u, v, _, alpha) = normalize_rgba_u16(uvs.get_pixel(x, y));
 
     // Perform all calculations in floating point to avoid overflow.
-    let (tex_r1, tex_g1, tex_b1, tex_alpha1) =
-        normalize_rgba_u8(texture.get_pixel(texture_x1, texture_y1));
-    let (tex_r2, tex_g2, tex_b2, tex_alpha2) =
-        normalize_rgba_u8(texture.get_pixel(texture_x2, texture_y2));
-
-    let (light_r1, light_g1, light_b1, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
+    let (tex_r, tex_g, tex_b, _) = normalize_rgba_u8(sample_texture(texture, u, v));
+    let (light_r, light_g, light_b, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
 
     // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
     // Multiplying by 4 is a bit too bright, so use 2 instead.
     let apply_lighting = |color: f32, light: f32| color * light * 2f32;
-    let alpha_blend = |val1: f32, val2: f32, alpha: f32| val1 * (1f32 - alpha) + val2 * alpha;
 
-    // TODO: Second layer lighting?
-    let get_result = |color1, color2, light, alpha| {
-        let layer1 = apply_lighting(color1, light);
-        let layer2 = color2;
-        alpha_blend(layer1, layer2, alpha)
-    };
-
-    let r_final = get_result(tex_r1, tex_r2, light_r1, tex_alpha2);
-    let g_final = get_result(tex_g1, tex_g2, light_g1, tex_alpha2);
-    let b_final = get_result(tex_b1, tex_b2, light_b1, tex_alpha2);
-    let a_final = (alpha_layer1 * tex_alpha1) + (alpha_layer2 * tex_alpha2);
+    let r_final = apply_lighting(tex_r, light_r);
+    let g_final = apply_lighting(tex_g, light_g);
+    let b_final = apply_lighting(tex_b, light_b);
+    let a_final = alpha;
 
     Rgba([
         to_u8_clamped(r_final),
