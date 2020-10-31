@@ -166,12 +166,12 @@ fn blend_layer_with_base(
 ) {
     for x in 0..base.width() {
         for y in 0..base.height() {
-            let (current_r, current_g, current_b, current_a) =
+            let (current_r, current_g, current_b, current_alpha) =
                 normalize_rgba_u8(base.get_pixel(x, y));
 
             let (u, v, _, uv_alpha) = normalize_rgba_u16(layer_uvs.get_pixel(x, y));
-            let head_color = sample_texture(texture, u, v);
-            let (layer_r, layer_g, layer_b, head_a) = normalize_rgba_u8(head_color);
+            let layer_color = sample_texture(texture, u, v);
+            let (layer_r, layer_g, layer_b, layer_alpha) = normalize_rgba_u8(layer_color);
 
             let (light_r, light_g, light_b, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
 
@@ -179,16 +179,16 @@ fn blend_layer_with_base(
             // Multiplying by 4 is a bit too bright, so use 2 instead.
             let apply_lighting = |color: f32, light: f32| color * light * 2f32;
 
-            let get_result = |val1: f32, val2: f32, lighting: f32| {
-                let lighting_result = apply_lighting(val2, lighting);
-                alpha_blend(val1, lighting_result, head_a * uv_alpha)
+            let get_result = |base: f32, layer: f32, lighting: f32| {
+                let lighting_result = apply_lighting(layer, lighting);
+                alpha_blend(base, lighting_result, layer_alpha * uv_alpha)
             };
 
             // Use the uv map alpha as well to prevent blending outside the masked region.
             let r = get_result(current_r, layer_r, light_r);
             let g = get_result(current_g, layer_g, light_g);
             let b = get_result(current_b, layer_b, light_b);
-            let alpha_final = current_a + head_a * uv_alpha;
+            let alpha_final = current_alpha + layer_alpha * uv_alpha;
 
             *base.get_pixel_mut(x, y) = Rgba([
                 to_u8_clamped(r),
@@ -211,11 +211,12 @@ fn copy_alpha(target: &mut RgbaImage, source: &RgbaImage) {
     }
 }
 
-// TODO: Use a generic type?
-// This will work for f64 as well.
-// Integer types may not work because of overflow.
 fn alpha_blend(val1: f32, val2: f32, alpha: f32) -> f32 {
-    val1 * (1f32 - alpha) + val2 * alpha
+    // Gamma correct to ensure the blending result is more accurate.
+    let val1_gamma_corrected = val1.powf(2.2f32);
+    let val2_gamma_corrected = val2.powf(2.2f32);
+    let result = val1_gamma_corrected * (1f32 - alpha) + val2_gamma_corrected * alpha;
+    result.powf(1.0f32 / 2.2f32)
 }
 
 // TODO: There's probably a more generic type than RgbaImage that supports width/height and indexing.
