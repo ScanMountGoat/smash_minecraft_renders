@@ -11,9 +11,28 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
     let lighting = image::load_from_memory(include_bytes!("../lighting.png"))
         .unwrap()
         .into_rgba();
+    let lighting_leg_l2 = image::load_from_memory(include_bytes!("../lighting_leg_l2.png"))
+        .unwrap()
+        .into_rgba();
+    let lighting_leg_r2 = image::load_from_memory(include_bytes!("../lighting_leg_r2.png"))
+        .unwrap()
+        .into_rgba();
+    let lighting_arm_l2 = image::load_from_memory(include_bytes!("../lighting_arm_l2.png"))
+        .unwrap()
+        .into_rgba();
+    let lighting_arm_r2 = image::load_from_memory(include_bytes!("../lighting_arm_r2.png"))
+        .unwrap()
+        .into_rgba();
+    let lighting_chest2 = image::load_from_memory(include_bytes!("../lighting_chest2.png"))
+        .unwrap()
+        .into_rgba();
+    let lighting_head2 = image::load_from_memory(include_bytes!("../lighting_head2.png"))
+        .unwrap()
+        .into_rgba();
 
+    // TODO: Refactor image loading to be cleaner.
     // At least 16 bit precision is required for the texture sampling to look decent.
-    let uvs = match image::load_from_memory(include_bytes!("../uvs.png")).unwrap() {
+    let head_uvs = match image::load_from_memory(include_bytes!("../head_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
@@ -21,7 +40,15 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
+    let chest_uvs = match image::load_from_memory(include_bytes!("../chest_uvs.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
     let chest_uvs2 = match image::load_from_memory(include_bytes!("../chest_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let leg_rl_uvs = match image::load_from_memory(include_bytes!("../leg_rl_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
@@ -30,6 +57,14 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
     let leg_r_uvs2 = match image::load_from_memory(include_bytes!("../leg_r_uvs2.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let arm_l_uvs = match image::load_from_memory(include_bytes!("../arm_l_uvs.png")).unwrap() {
+        DynamicImage::ImageRgba16(buffer) => buffer,
+        _ => panic!("Expected RGBA 16 bit for UVs"),
+    };
+    let arm_r_uvs = match image::load_from_memory(include_bytes!("../arm_r_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
@@ -42,33 +77,53 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
 
-    let mut output = ImageBuffer::new(uvs.dimensions().0, uvs.dimensions().1);
+    let mut output = ImageBuffer::new(head_uvs.dimensions().0, head_uvs.dimensions().1);
 
-    // TODO: Do this without loops?
-    // There may be a way to optimize this using multiple threads.
-    // Create base layer.
-    for x in 0..output.width() {
-        for y in 0..output.height() {
-            *output.get_pixel_mut(x, y) =
-                calculate_base_layer(x, y, &uvs, &lighting, minecraft_skin_texture);
-        }
-    }
+    // TODO: There may be some optimizations possible for pixels that have 0 alpha.
+    // TODO: Threading?
 
-    // TODO: Apply lighting to the second layer.
-    // It may be better to light after blending to avoid lit pixels 
-    // being discarded due to 0 alpha or being obscured.
-
-    // Layers are blended independently because it isn't known ahead of time
-    // what layers will be used and what layers will occlude other layers.
-    // The order layers are blended is critical.
-    // TODO: Implement some form of sorting to handle layer and intersecting geometry.
-    // TODO: Bake a depth map?
-    blend_layer_with_base(&mut output, &head_uvs2, minecraft_skin_texture);
-    blend_layer_with_base(&mut output, &arm_l_uvs2, minecraft_skin_texture);
-    blend_layer_with_base(&mut output, &arm_r_uvs2, minecraft_skin_texture);
-    blend_layer_with_base(&mut output, &chest_uvs2, minecraft_skin_texture);
-    blend_layer_with_base(&mut output, &leg_l_uvs2, minecraft_skin_texture);
-    blend_layer_with_base(&mut output, &leg_r_uvs2, minecraft_skin_texture);
+    // Steve has simple geometry, so blend layers from back to front rather than using a depth map.
+    blend_layer_with_base(&mut output, &leg_rl_uvs, minecraft_skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &arm_l_uvs, minecraft_skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &head_uvs, minecraft_skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &chest_uvs, minecraft_skin_texture, &lighting);
+    blend_layer_with_base(
+        &mut output,
+        &arm_l_uvs2,
+        minecraft_skin_texture,
+        &lighting_arm_l2,
+    );
+    blend_layer_with_base(
+        &mut output,
+        &chest_uvs2,
+        minecraft_skin_texture,
+        &lighting_chest2,
+    );
+    blend_layer_with_base(
+        &mut output,
+        &head_uvs2,
+        minecraft_skin_texture,
+        &lighting_head2,
+    );
+    blend_layer_with_base(
+        &mut output,
+        &leg_l_uvs2,
+        minecraft_skin_texture,
+        &lighting_leg_l2,
+    );
+    blend_layer_with_base(
+        &mut output,
+        &leg_r_uvs2,
+        minecraft_skin_texture,
+        &lighting_leg_r2,
+    );
+    blend_layer_with_base(&mut output, &arm_r_uvs, minecraft_skin_texture, &lighting);
+    blend_layer_with_base(
+        &mut output,
+        &arm_r_uvs2,
+        minecraft_skin_texture,
+        &lighting_arm_r2,
+    );
 
     output
 }
@@ -107,6 +162,7 @@ fn blend_layer_with_base(
     base: &mut RgbaImage,
     layer_uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
     texture: &RgbaImage,
+    lighting: &RgbaImage,
 ) {
     for x in 0..base.width() {
         for y in 0..base.height() {
@@ -115,12 +171,23 @@ fn blend_layer_with_base(
 
             let (u, v, _, uv_alpha) = normalize_rgba_u16(layer_uvs.get_pixel(x, y));
             let head_color = sample_texture(texture, u, v);
-            let (head_r, head_g, head_b, head_a) = normalize_rgba_u8(head_color);
+            let (layer_r, layer_g, layer_b, head_a) = normalize_rgba_u8(head_color);
+
+            let (light_r, light_g, light_b, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
+
+            // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
+            // Multiplying by 4 is a bit too bright, so use 2 instead.
+            let apply_lighting = |color: f32, light: f32| color * light * 2f32;
+
+            let get_result = |val1: f32, val2: f32, lighting: f32| {
+                let lighting_result = apply_lighting(val2, lighting);
+                alpha_blend(val1, lighting_result, head_a * uv_alpha)
+            };
 
             // Use the uv map alpha as well to prevent blending outside the masked region.
-            let r = alpha_blend(current_r, head_r, head_a * uv_alpha);
-            let g = alpha_blend(current_g, head_g, head_a * uv_alpha);
-            let b = alpha_blend(current_b, head_b, head_a * uv_alpha);
+            let r = get_result(current_r, layer_r, light_r);
+            let g = get_result(current_g, layer_g, light_g);
+            let b = get_result(current_b, layer_b, light_b);
             let alpha_final = current_a + head_a * uv_alpha;
 
             *base.get_pixel_mut(x, y) = Rgba([
@@ -156,37 +223,6 @@ fn sample_texture(image: &RgbaImage, u: f32, v: f32) -> &Rgba<u8> {
     // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
     let (x, y) = interpolate_nearest(u, 1f32 - v, image.dimensions().0, image.dimensions().1);
     image.get_pixel(x, y)
-}
-
-fn calculate_base_layer(
-    x: u32,
-    y: u32,
-    uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
-    lighting: &RgbaImage,
-    texture: &RgbaImage,
-) -> Rgba<u8> {
-    // Get texture coordinates for both uv layers.
-    let (u, v, _, alpha) = normalize_rgba_u16(uvs.get_pixel(x, y));
-
-    // Perform all calculations in floating point to avoid overflow.
-    let (tex_r, tex_g, tex_b, _) = normalize_rgba_u8(sample_texture(texture, u, v));
-    let (light_r, light_g, light_b, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
-
-    // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
-    // Multiplying by 4 is a bit too bright, so use 2 instead.
-    let apply_lighting = |color: f32, light: f32| color * light * 2f32;
-
-    let r_final = apply_lighting(tex_r, light_r);
-    let g_final = apply_lighting(tex_g, light_g);
-    let b_final = apply_lighting(tex_b, light_b);
-    let a_final = alpha;
-
-    Rgba([
-        to_u8_clamped(r_final),
-        to_u8_clamped(g_final),
-        to_u8_clamped(b_final),
-        to_u8_clamped(a_final),
-    ])
 }
 
 fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
