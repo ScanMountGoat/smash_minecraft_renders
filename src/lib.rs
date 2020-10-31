@@ -10,80 +10,37 @@ pub mod modern_skin;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
-    let lighting = image::load_from_memory(include_bytes!("../images/lighting/lighting.png"))
-        .unwrap()
-        .into_rgba();
-    let lighting_leg_l2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_leg_l2.png"))
-        .unwrap()
-        .into_rgba();
-    let lighting_leg_r2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_leg_r2.png"))
-        .unwrap()
-        .into_rgba();
-    let lighting_arm_l2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_arm_l2.png"))
-        .unwrap()
-        .into_rgba();
-    let lighting_arm_r2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_arm_r2.png"))
-        .unwrap()
-        .into_rgba();
-    let lighting_chest2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_chest2.png"))
-        .unwrap()
-        .into_rgba();
-    let lighting_head2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_head2.png"))
-        .unwrap()
-        .into_rgba();
+    let load_rgba_u8 = |buffer| image::load_from_memory(buffer).unwrap().into_rgba();
 
-    // TODO: Refactor image loading to be cleaner.
+    let lighting = load_rgba_u8(include_bytes!("../images/lighting/lighting.png"));
+    let lighting_leg_l2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_leg_l2.png"));
+    let lighting_leg_r2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_leg_r2.png"));
+    let lighting_arm_l2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_arm_l2.png"));
+    let lighting_arm_r2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_arm_r2.png"));
+    let lighting_chest2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_chest2.png"));
+    let lighting_head2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_head2.png"));
+
     // At least 16 bit precision is required for the texture sampling to look decent.
-    let head_uvs = match image::load_from_memory(include_bytes!("../images/uvs/head_uvs.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
+    let load_rgba_u16 = |buffer| match image::load_from_memory(buffer).unwrap() {
+        DynamicImage::ImageRgba16(image_buffer) => image_buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let head_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/head_uvs2.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let chest_uvs = match image::load_from_memory(include_bytes!("../images/uvs/chest_uvs.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let chest_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/chest_uvs2.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let leg_rl_uvs = match image::load_from_memory(include_bytes!("../images/uvs/leg_rl_uvs.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let leg_l_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/leg_l_uvs2.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let leg_r_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/leg_r_uvs2.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let arm_l_uvs = match image::load_from_memory(include_bytes!("../images/uvs/arm_l_uvs.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let arm_r_uvs = match image::load_from_memory(include_bytes!("../images/uvs/arm_r_uvs.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let arm_l_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/arm_l_uvs2.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
-    let arm_r_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/arm_r_uvs2.png")).unwrap() {
-        DynamicImage::ImageRgba16(buffer) => buffer,
-        _ => panic!("Expected RGBA 16 bit for UVs"),
-    };
+
+    let head_uvs = load_rgba_u16(include_bytes!("../images/uvs/head_uvs.png"));
+    let head_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/head_uvs2.png"));
+    let chest_uvs = load_rgba_u16(include_bytes!("../images/uvs/chest_uvs.png"));
+    let chest_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/chest_uvs2.png"));
+    let leg_rl_uvs = load_rgba_u16(include_bytes!("../images/uvs/leg_rl_uvs.png"));
+    let leg_l_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/leg_l_uvs2.png"));
+    let leg_r_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/leg_r_uvs2.png"));
+    let arm_l_uvs = load_rgba_u16(include_bytes!("../images/uvs/arm_l_uvs.png"));
+    let arm_r_uvs = load_rgba_u16(include_bytes!("../images/uvs/arm_r_uvs.png"));
+    let arm_l_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/arm_l_uvs2.png"));
+    let arm_r_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/arm_r_uvs2.png"));
 
     let mut output = ImageBuffer::new(head_uvs.dimensions().0, head_uvs.dimensions().1);
 
-    // TODO: There may be some optimizations possible for pixels that have 0 alpha.
-    // TODO: Threading?
-
+    // Alpha blending relies on having the correct color already present in the render buffer.
     // Steve has simple geometry, so blend layers from back to front rather than using a depth map.
     blend_layer_with_base(&mut output, &leg_rl_uvs, skin_texture, &lighting);
     blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture, &lighting);
@@ -134,8 +91,13 @@ pub fn create_chara_image(
 /// `ultimate = (minecraft ^ (1.0 / 0.72)) * 0.72`
 pub fn color_correct(color: &Rgba<u8>) -> Rgba<u8> {
     let reduce_contrast = |c: f32| c.powf(1.0f32 / 0.72f32) * 0.72f32;
-    let (r,g,b, _) = normalize_rgba_u8(color);
-    Rgba([to_u8_clamped(reduce_contrast(r)), to_u8_clamped(reduce_contrast(g)), to_u8_clamped(reduce_contrast(b)), color[3]])
+    let (r, g, b, _) = normalize_rgba_u8(color);
+    Rgba([
+        to_u8_clamped(reduce_contrast(r)),
+        to_u8_clamped(reduce_contrast(g)),
+        to_u8_clamped(reduce_contrast(b)),
+        color[3],
+    ])
 }
 
 fn blend_layer_with_base(
@@ -149,10 +111,20 @@ fn blend_layer_with_base(
             let (current_r, current_g, current_b, current_alpha) =
                 normalize_rgba_u8(base.get_pixel(x, y));
 
-            let (u, v, _, uv_alpha) = normalize_rgba_u16(layer_uvs.get_pixel(x, y));
-            let layer_color = sample_texture(texture, u, v);
-            let (layer_r, layer_g, layer_b, layer_alpha) = normalize_rgba_u8(layer_color);
+            // Skip pixels outside the masked region to improve performance.
+            let uv_rgba = layer_uvs.get_pixel(x, y);
+            if uv_rgba[3] == 0u16 {
+                continue;
+            }
 
+            // Skip fully transparent sampled texels to improve performance.
+            let (u, v, _, uv_alpha) = normalize_rgba_u16(uv_rgba);
+            let layer_color = sample_texture(texture, u, v);
+            if layer_color[3] == 0u8 {
+                continue;
+            }
+
+            let (layer_r, layer_g, layer_b, layer_alpha) = normalize_rgba_u8(layer_color);
             let (light_r, light_g, light_b, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
 
             // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
@@ -161,7 +133,13 @@ fn blend_layer_with_base(
 
             let get_result = |base: f32, layer: f32, lighting: f32| {
                 let lighting_result = apply_lighting(layer, lighting);
-                alpha_blend(base, lighting_result, layer_alpha * uv_alpha)
+
+                // Skip the costly floating point gamma correction and blending if possible.
+                if layer_color[3] < 255u8 {
+                    alpha_blend(base, lighting_result, layer_alpha * uv_alpha)
+                } else {
+                    lighting_result
+                }
             };
 
             // Use the uv map alpha as well to prevent blending outside the masked region.
@@ -199,7 +177,6 @@ fn alpha_blend(val1: f32, val2: f32, alpha: f32) -> f32 {
     result.powf(1.0f32 / 2.2f32)
 }
 
-// TODO: There's probably a more generic type than RgbaImage that supports width/height and indexing.
 fn sample_texture(image: &RgbaImage, u: f32, v: f32) -> &Rgba<u8> {
     // Flip v to transform from an origin at the bottom left (OpenGL) to top left (image).
     let (x, y) = interpolate_nearest(u, 1f32 - v, image.dimensions().0, image.dimensions().1);

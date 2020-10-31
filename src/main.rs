@@ -1,4 +1,5 @@
 use clap::{App, Arg};
+use std::time::Instant;
 
 fn main() {
     // TODO: Create better argument names.
@@ -43,7 +44,12 @@ fn main() {
         }
     }
 
+    let start_time = Instant::now();
+
     let output = minecraft_render::create_render(&skin_texture);
+
+    let elapsed = start_time.elapsed();
+    eprintln!("Create Render: {:?}", elapsed);
 
     // Create UI renders from the output render.
     // The transformations are hardcoded based on the output render resolution.
