@@ -6,8 +6,10 @@ use imageproc::geometric_transformations::warp_into_with;
 use imageproc::geometric_transformations::Interpolation;
 use std::cmp::min;
 
+pub mod modern_skin;
+
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
-pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
+pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
     let lighting = image::load_from_memory(include_bytes!("../lighting.png"))
         .unwrap()
         .into_rgba();
@@ -83,47 +85,17 @@ pub fn create_render(minecraft_skin_texture: &RgbaImage) -> RgbaImage {
     // TODO: Threading?
 
     // Steve has simple geometry, so blend layers from back to front rather than using a depth map.
-    blend_layer_with_base(&mut output, &leg_rl_uvs, minecraft_skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &arm_l_uvs, minecraft_skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &head_uvs, minecraft_skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &chest_uvs, minecraft_skin_texture, &lighting);
-    blend_layer_with_base(
-        &mut output,
-        &arm_l_uvs2,
-        minecraft_skin_texture,
-        &lighting_arm_l2,
-    );
-    blend_layer_with_base(
-        &mut output,
-        &chest_uvs2,
-        minecraft_skin_texture,
-        &lighting_chest2,
-    );
-    blend_layer_with_base(
-        &mut output,
-        &head_uvs2,
-        minecraft_skin_texture,
-        &lighting_head2,
-    );
-    blend_layer_with_base(
-        &mut output,
-        &leg_l_uvs2,
-        minecraft_skin_texture,
-        &lighting_leg_l2,
-    );
-    blend_layer_with_base(
-        &mut output,
-        &leg_r_uvs2,
-        minecraft_skin_texture,
-        &lighting_leg_r2,
-    );
-    blend_layer_with_base(&mut output, &arm_r_uvs, minecraft_skin_texture, &lighting);
-    blend_layer_with_base(
-        &mut output,
-        &arm_r_uvs2,
-        minecraft_skin_texture,
-        &lighting_arm_r2,
-    );
+    blend_layer_with_base(&mut output, &leg_rl_uvs, skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &head_uvs, skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &chest_uvs, skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &arm_l_uvs2, skin_texture, &lighting_arm_l2);
+    blend_layer_with_base(&mut output, &chest_uvs2, skin_texture, &lighting_chest2);
+    blend_layer_with_base(&mut output, &head_uvs2, skin_texture, &lighting_head2);
+    blend_layer_with_base(&mut output, &leg_l_uvs2, skin_texture, &lighting_leg_l2);
+    blend_layer_with_base(&mut output, &leg_r_uvs2, skin_texture, &lighting_leg_r2);
+    blend_layer_with_base(&mut output, &arm_r_uvs, skin_texture, &lighting);
+    blend_layer_with_base(&mut output, &arm_r_uvs2, skin_texture, &lighting_arm_r2);
 
     output
 }
@@ -156,6 +128,14 @@ pub fn create_chara_image(
     copy_alpha(&mut output, &chara_reference);
 
     output
+}
+
+/// Converts a color from Minecraft to match Smash ultimate using the following formula:
+/// `ultimate = (minecraft ^ (1.0 / 0.72)) * 0.72`
+pub fn color_correct(color: &Rgba<u8>) -> Rgba<u8> {
+    let reduce_contrast = |c: f32| c.powf(1.0f32 / 0.72f32) * 0.72f32;
+    let (r,g,b, _) = normalize_rgba_u8(color);
+    Rgba([to_u8_clamped(reduce_contrast(r)), to_u8_clamped(reduce_contrast(g)), to_u8_clamped(reduce_contrast(b)), color[3]])
 }
 
 fn blend_layer_with_base(
@@ -299,6 +279,22 @@ mod tests {
         assert_eq!(
             normalize_rgba_u8(&Rgba([255u8, 255u8, 255u8, 255u8])),
             (1f32, 1f32, 1f32, 1f32)
+        );
+    }
+
+    #[test]
+    fn test_color_correct() {
+        assert_eq!(
+            color_correct(&Rgba([0u8, 0u8, 0u8, 0u8])),
+            Rgba([0u8, 0u8, 0u8, 0u8])
+        );
+        assert_eq!(
+            color_correct(&Rgba([128u8, 128u8, 128u8, 13u8])),
+            Rgba([70u8, 70u8, 70u8, 13u8])
+        );
+        assert_eq!(
+            color_correct(&Rgba([255u8, 255u8, 255u8, 255u8])),
+            Rgba([184u8, 184u8, 184u8, 255u8])
         );
     }
 

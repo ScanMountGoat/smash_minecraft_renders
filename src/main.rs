@@ -1,10 +1,49 @@
+use clap::{App, Arg};
+
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
+    // TODO: Create better argument names.
+    let matches = App::new("minecraft_render")
+        .version("0.1")
+        .author("SMG")
+        .about("Create Smash Ultimate Steve UI from Minecraft skin textures")
+        .arg(
+            Arg::with_name("skin")
+                .short("s")
+                .long("skin")
+                .value_name("sample.png")
+                .help("the Minecraft skin texture")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("is_legacy")
+                .short("l")
+                .long("legacy")
+                .help("convert 2:1 skins (pre Minecraft v1.8) to 1:1 aspect ratio")
+                .takes_value(false),
+        )
+        .arg(
+            Arg::with_name("color_correct")
+                .short("c")
+                .long("colorcorrect")
+                .help("levels adjustment to match Smash Ultimate")
+                .takes_value(false),
+        )
+        .get_matches();
 
-    let texture_path = std::path::Path::new(&args[1]);
-    let minecraft_skin_texture = image::open(texture_path).unwrap().into_rgba();
+    let texture_path = matches.value_of("skin").unwrap();
+    let mut skin_texture = image::open(texture_path).unwrap().into_rgba();
+    if matches.is_present("is_legacy") {
+        skin_texture = minecraft_render::modern_skin::convert_to_modern_skin(&skin_texture);
+    }
 
-    let output = minecraft_render::create_render(&minecraft_skin_texture);
+    if matches.is_present("color_correct") {
+        for pixel in skin_texture.pixels_mut() {
+            *pixel = minecraft_render::color_correct(pixel);
+        }
+    }
+
+    let output = minecraft_render::create_render(&skin_texture);
 
     // Create UI renders from the output render.
     // The transformations are hardcoded based on the output render resolution.

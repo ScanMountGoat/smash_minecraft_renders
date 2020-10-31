@@ -13,8 +13,8 @@ The generated UV map should have vertices snapped to pixel corners and be export
 This can be achieved in Blender by setting view transform to `Raw`, dither to `0.00`, and samples to `1`. See the provided `uvs.png` for the expected dimensions and layout.  
 
 # CLI Usage
-`smash_minecraft_renders.exe <Minecraft skin texture>`  
-`smash_minecraft_renders.exe sample.png`
+`minecraft_render.exe [FLAGS] --skin <sample.png>`  
+`minecraft_render.exe -h` for a list of arguments and options.    
 
 Creates the following files:  
 ```
