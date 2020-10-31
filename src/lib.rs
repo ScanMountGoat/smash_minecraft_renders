@@ -10,71 +10,71 @@ pub mod modern_skin;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
-    let lighting = image::load_from_memory(include_bytes!("../lighting.png"))
+    let lighting = image::load_from_memory(include_bytes!("../images/lighting/lighting.png"))
         .unwrap()
         .into_rgba();
-    let lighting_leg_l2 = image::load_from_memory(include_bytes!("../lighting_leg_l2.png"))
+    let lighting_leg_l2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_leg_l2.png"))
         .unwrap()
         .into_rgba();
-    let lighting_leg_r2 = image::load_from_memory(include_bytes!("../lighting_leg_r2.png"))
+    let lighting_leg_r2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_leg_r2.png"))
         .unwrap()
         .into_rgba();
-    let lighting_arm_l2 = image::load_from_memory(include_bytes!("../lighting_arm_l2.png"))
+    let lighting_arm_l2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_arm_l2.png"))
         .unwrap()
         .into_rgba();
-    let lighting_arm_r2 = image::load_from_memory(include_bytes!("../lighting_arm_r2.png"))
+    let lighting_arm_r2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_arm_r2.png"))
         .unwrap()
         .into_rgba();
-    let lighting_chest2 = image::load_from_memory(include_bytes!("../lighting_chest2.png"))
+    let lighting_chest2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_chest2.png"))
         .unwrap()
         .into_rgba();
-    let lighting_head2 = image::load_from_memory(include_bytes!("../lighting_head2.png"))
+    let lighting_head2 = image::load_from_memory(include_bytes!("../images/lighting/lighting_head2.png"))
         .unwrap()
         .into_rgba();
 
     // TODO: Refactor image loading to be cleaner.
     // At least 16 bit precision is required for the texture sampling to look decent.
-    let head_uvs = match image::load_from_memory(include_bytes!("../head_uvs.png")).unwrap() {
+    let head_uvs = match image::load_from_memory(include_bytes!("../images/uvs/head_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let head_uvs2 = match image::load_from_memory(include_bytes!("../head_uvs2.png")).unwrap() {
+    let head_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/head_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let chest_uvs = match image::load_from_memory(include_bytes!("../chest_uvs.png")).unwrap() {
+    let chest_uvs = match image::load_from_memory(include_bytes!("../images/uvs/chest_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let chest_uvs2 = match image::load_from_memory(include_bytes!("../chest_uvs2.png")).unwrap() {
+    let chest_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/chest_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let leg_rl_uvs = match image::load_from_memory(include_bytes!("../leg_rl_uvs.png")).unwrap() {
+    let leg_rl_uvs = match image::load_from_memory(include_bytes!("../images/uvs/leg_rl_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let leg_l_uvs2 = match image::load_from_memory(include_bytes!("../leg_l_uvs2.png")).unwrap() {
+    let leg_l_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/leg_l_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let leg_r_uvs2 = match image::load_from_memory(include_bytes!("../leg_r_uvs2.png")).unwrap() {
+    let leg_r_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/leg_r_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let arm_l_uvs = match image::load_from_memory(include_bytes!("../arm_l_uvs.png")).unwrap() {
+    let arm_l_uvs = match image::load_from_memory(include_bytes!("../images/uvs/arm_l_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let arm_r_uvs = match image::load_from_memory(include_bytes!("../arm_r_uvs.png")).unwrap() {
+    let arm_r_uvs = match image::load_from_memory(include_bytes!("../images/uvs/arm_r_uvs.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let arm_l_uvs2 = match image::load_from_memory(include_bytes!("../arm_l_uvs2.png")).unwrap() {
+    let arm_l_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/arm_l_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-    let arm_r_uvs2 = match image::load_from_memory(include_bytes!("../arm_r_uvs2.png")).unwrap() {
+    let arm_r_uvs2 = match image::load_from_memory(include_bytes!("../images/uvs/arm_r_uvs2.png")).unwrap() {
         DynamicImage::ImageRgba16(buffer) => buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
