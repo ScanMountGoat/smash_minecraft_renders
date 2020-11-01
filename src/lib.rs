@@ -17,16 +17,10 @@ pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
     };
 
     let head_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head.png"));
-    let head_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head2.png"));
     let chest_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest.png"));
-    let chest_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest2.png"));
-    let leg_rl_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_rl.png"));
-    let leg_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l2.png"));
-    let leg_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r2.png"));
     let arm_l_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l.png"));
     let arm_r_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r.png"));
-    let arm_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l2.png"));
-    let arm_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r2.png"));
+    let leg_rl_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_rl.png"));
 
     let mut output = ImageBuffer::new(head_uvs.dimensions().0, head_uvs.dimensions().1);
 
@@ -36,13 +30,40 @@ pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
     blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture);
     blend_layer_with_base(&mut output, &head_uvs, skin_texture);
     blend_layer_with_base(&mut output, &chest_uvs, skin_texture);
-    blend_layer_with_base(&mut output, &arm_l_uvs2, skin_texture);
-    blend_layer_with_base(&mut output, &chest_uvs2, skin_texture);
-    blend_layer_with_base(&mut output, &head_uvs2, skin_texture);
-    blend_layer_with_base(&mut output, &leg_l_uvs2, skin_texture);
-    blend_layer_with_base(&mut output, &leg_r_uvs2, skin_texture);
+
+    // Skip costly image loading and blending for regions with fully transparent pixels.
+    // Assume the base layers are always used.
+    if has_pixel_in_region(&skin_texture, 0.75f32, 1.0f32, 0.75f32, 1.0f32) {
+        let arm_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l2.png"));
+        blend_layer_with_base(&mut output, &arm_l_uvs2, skin_texture);
+    }
+
+    if has_pixel_in_region(&skin_texture, 0.25f32, 0.625f32, 0.5f32, 0.75f32) {
+        let chest_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest2.png"));
+        blend_layer_with_base(&mut output, &chest_uvs2, skin_texture);
+    }
+
+    if has_pixel_in_region(&skin_texture, 0.5f32, 1.0f32, 0.0f32, 0.25f32) {
+        let head_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head2.png"));
+        blend_layer_with_base(&mut output, &head_uvs2, skin_texture);
+    }
+
+    if has_pixel_in_region(&skin_texture, 0.0f32, 0.25f32, 0.75f32, 1.0f32) {
+        let leg_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l2.png"));
+        blend_layer_with_base(&mut output, &leg_l_uvs2, skin_texture);
+    }
+
+    if has_pixel_in_region(&skin_texture, 0.0f32, 0.25f32, 0.5f32, 0.75f32) {
+        let leg_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r2.png"));
+        blend_layer_with_base(&mut output, &leg_r_uvs2, skin_texture);
+    }
+
     blend_layer_with_base(&mut output, &arm_r_uvs, skin_texture);
-    blend_layer_with_base(&mut output, &arm_r_uvs2, skin_texture);
+
+    if has_pixel_in_region(&skin_texture, 0.625f32, 0.875f32, 0.5f32, 0.75f32) {
+        let arm_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r2.png"));
+        blend_layer_with_base(&mut output, &arm_r_uvs2, skin_texture);
+    }
 
     output
 }
@@ -80,7 +101,7 @@ pub fn create_chara_image(
 /// Converts a color from Minecraft to match Smash ultimate using the following formula:
 /// `ultimate = (minecraft ^ (1.0 / 0.72)) * 0.72`
 pub fn color_correct(color: &Rgba<u8>) -> Rgba<u8> {
-    let reduce_contrast = |c: f32| c.powf(1.0f32 / 0.72f32) * 0.72f32;
+    let reduce_contrast = |c: f32| c.powf(0.72f32) * 0.72f32;
     let (r, g, b, _) = normalize_rgba_u8(color);
     Rgba([
         to_u8_clamped(reduce_contrast(r)),
@@ -143,6 +164,30 @@ fn blend_layer_with_base(
             ]);
         }
     }
+}
+
+fn has_pixel_in_region(
+    image: &RgbaImage,
+    x_start: f32,
+    x_end: f32,
+    y_start: f32,
+    y_end: f32,
+) -> bool {
+    let x_start = (x_start * image.width() as f32) as u32;
+    let x_end = (x_end * image.width() as f32) as u32;
+
+    let y_start = (y_start * image.height() as f32) as u32;
+    let y_end = (y_end * image.height() as f32) as u32;
+
+    for x in x_start..x_end {
+        for y in y_start..y_end {
+            if image.get_pixel(x, y)[3] > 0u8 {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 fn copy_alpha(target: &mut RgbaImage, source: &RgbaImage) {
@@ -254,7 +299,7 @@ mod tests {
         );
         assert_eq!(
             color_correct(&Rgba([128u8, 128u8, 128u8, 13u8])),
-            Rgba([70u8, 70u8, 70u8, 13u8])
+            Rgba([112u8, 112u8, 112u8, 13u8])
         );
         assert_eq!(
             color_correct(&Rgba([255u8, 255u8, 255u8, 255u8])),
