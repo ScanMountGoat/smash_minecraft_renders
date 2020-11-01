@@ -10,16 +10,6 @@ pub mod modern_skin;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
-    let load_rgba_u8 = |buffer| image::load_from_memory(buffer).unwrap().into_rgba();
-
-    let lighting = load_rgba_u8(include_bytes!("../images/lighting/lighting.png"));
-    let lighting_leg_l2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_leg_l2.png"));
-    let lighting_leg_r2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_leg_r2.png"));
-    let lighting_arm_l2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_arm_l2.png"));
-    let lighting_arm_r2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_arm_r2.png"));
-    let lighting_chest2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_chest2.png"));
-    let lighting_head2 = load_rgba_u8(include_bytes!("../images/lighting/lighting_head2.png"));
-
     // At least 16 bit precision is required for the texture sampling to look decent.
     let load_rgba_u16 = |buffer| match image::load_from_memory(buffer).unwrap() {
         DynamicImage::ImageRgba16(image_buffer) => image_buffer,
@@ -42,17 +32,17 @@ pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
 
     // Alpha blending relies on having the correct color already present in the render buffer.
     // Steve has simple geometry, so blend layers from back to front rather than using a depth map.
-    blend_layer_with_base(&mut output, &leg_rl_uvs, skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &head_uvs, skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &chest_uvs, skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &arm_l_uvs2, skin_texture, &lighting_arm_l2);
-    blend_layer_with_base(&mut output, &chest_uvs2, skin_texture, &lighting_chest2);
-    blend_layer_with_base(&mut output, &head_uvs2, skin_texture, &lighting_head2);
-    blend_layer_with_base(&mut output, &leg_l_uvs2, skin_texture, &lighting_leg_l2);
-    blend_layer_with_base(&mut output, &leg_r_uvs2, skin_texture, &lighting_leg_r2);
-    blend_layer_with_base(&mut output, &arm_r_uvs, skin_texture, &lighting);
-    blend_layer_with_base(&mut output, &arm_r_uvs2, skin_texture, &lighting_arm_r2);
+    blend_layer_with_base(&mut output, &leg_rl_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &head_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &chest_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &arm_l_uvs2, skin_texture);
+    blend_layer_with_base(&mut output, &chest_uvs2, skin_texture);
+    blend_layer_with_base(&mut output, &head_uvs2, skin_texture);
+    blend_layer_with_base(&mut output, &leg_l_uvs2, skin_texture);
+    blend_layer_with_base(&mut output, &leg_r_uvs2, skin_texture);
+    blend_layer_with_base(&mut output, &arm_r_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &arm_r_uvs2, skin_texture);
 
     output
 }
@@ -102,36 +92,31 @@ pub fn color_correct(color: &Rgba<u8>) -> Rgba<u8> {
 
 fn blend_layer_with_base(
     base: &mut RgbaImage,
-    layer_uvs: &ImageBuffer<Rgba<u16>, Vec<u16>>,
+    layer_uvs_lighting: &ImageBuffer<Rgba<u16>, Vec<u16>>,
     texture: &RgbaImage,
-    lighting: &RgbaImage,
 ) {
     for x in 0..base.width() {
         for y in 0..base.height() {
-            let (current_r, current_g, current_b, current_alpha) =
-                normalize_rgba_u8(base.get_pixel(x, y));
-
             // Skip pixels outside the masked region to improve performance.
-            let uv_rgba = layer_uvs.get_pixel(x, y);
+            let uv_rgba = layer_uvs_lighting.get_pixel(x, y);
             if uv_rgba[3] == 0u16 {
                 continue;
             }
 
             // Skip fully transparent sampled texels to improve performance.
-            let (u, v, _, uv_alpha) = normalize_rgba_u16(uv_rgba);
+            let (u, v, lighting, uv_alpha) = normalize_rgba_u16(uv_rgba);
             let layer_color = sample_texture(texture, u, v);
             if layer_color[3] == 0u8 {
                 continue;
             }
 
             let (layer_r, layer_g, layer_b, layer_alpha) = normalize_rgba_u8(layer_color);
-            let (light_r, light_g, light_b, _) = normalize_rgba_u8(lighting.get_pixel(x, y));
 
             // The lighting pass is scaled down by a factor of 0.25 to fit into 8 bits per channel.
             // Multiplying by 4 is a bit too bright, so use 2 instead.
             let apply_lighting = |color: f32, light: f32| color * light * 2f32;
 
-            let get_result = |base: f32, layer: f32, lighting: f32| {
+            let get_result = |base: f32, layer: f32| {
                 let lighting_result = apply_lighting(layer, lighting);
 
                 // Skip the costly floating point gamma correction and blending if possible.
@@ -142,11 +127,13 @@ fn blend_layer_with_base(
                 }
             };
 
+            let (base_r, base_g, base_b, base_a) = normalize_rgba_u8(base.get_pixel(x, y));
+
             // Use the uv map alpha as well to prevent blending outside the masked region.
-            let r = get_result(current_r, layer_r, light_r);
-            let g = get_result(current_g, layer_g, light_g);
-            let b = get_result(current_b, layer_b, light_b);
-            let alpha_final = current_alpha + layer_alpha * uv_alpha;
+            let r = get_result(base_r, layer_r);
+            let g = get_result(base_g, layer_g);
+            let b = get_result(base_b, layer_b);
+            let alpha_final = base_a + layer_alpha * uv_alpha;
 
             *base.get_pixel_mut(x, y) = Rgba([
                 to_u8_clamped(r),
