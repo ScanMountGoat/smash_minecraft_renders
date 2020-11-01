@@ -93,7 +93,7 @@ pub fn create_chara_image(
     );
 
     // Use the reference image's alpha for appropriate masking on some portraits.
-    copy_alpha(&mut output, &chara_reference);
+    blend_alpha(&mut output, &chara_reference);
 
     output
 }
@@ -190,13 +190,13 @@ fn has_pixel_in_region(
     false
 }
 
-fn copy_alpha(target: &mut RgbaImage, source: &RgbaImage) {
-    // TODO: There may be a cleaner/more efficient way to do this.
-    for x in 0..target.width() {
-        for y in 0..target.height() {
-            let current = target.get_pixel_mut(x, y);
-            let alpha = source.get_pixel(x, y)[3];
-            *current = Rgba([current[0], current[1], current[2], alpha]);
+fn blend_alpha(current: &mut RgbaImage, reference: &RgbaImage) {
+    // Use the alpha of current with reference as a mask.
+    for x in 0..current.width() {
+        for y in 0..current.height() {
+            let current = current.get_pixel_mut(x, y);
+            let target = reference.get_pixel(x, y);
+            *current = Rgba([current[0], current[1], current[2], min(current[3], target[3])]);
         }
     }
 }
