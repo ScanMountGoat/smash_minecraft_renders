@@ -16,17 +16,17 @@ pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
 
-    let head_uvs = load_rgba_u16(include_bytes!("../images/uvs/head_uvs.png"));
-    let head_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/head_uvs2.png"));
-    let chest_uvs = load_rgba_u16(include_bytes!("../images/uvs/chest_uvs.png"));
-    let chest_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/chest_uvs2.png"));
-    let leg_rl_uvs = load_rgba_u16(include_bytes!("../images/uvs/leg_rl_uvs.png"));
-    let leg_l_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/leg_l_uvs2.png"));
-    let leg_r_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/leg_r_uvs2.png"));
-    let arm_l_uvs = load_rgba_u16(include_bytes!("../images/uvs/arm_l_uvs.png"));
-    let arm_r_uvs = load_rgba_u16(include_bytes!("../images/uvs/arm_r_uvs.png"));
-    let arm_l_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/arm_l_uvs2.png"));
-    let arm_r_uvs2 = load_rgba_u16(include_bytes!("../images/uvs/arm_r_uvs2.png"));
+    let head_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head.png"));
+    let head_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head2.png"));
+    let chest_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest.png"));
+    let chest_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest2.png"));
+    let leg_rl_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_rl.png"));
+    let leg_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l2.png"));
+    let leg_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r2.png"));
+    let arm_l_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l.png"));
+    let arm_r_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r.png"));
+    let arm_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l2.png"));
+    let arm_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r2.png"));
 
     let mut output = ImageBuffer::new(head_uvs.dimensions().0, head_uvs.dimensions().1);
 
