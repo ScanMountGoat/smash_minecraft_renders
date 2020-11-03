@@ -4,7 +4,7 @@ use image::Rgba;
 use image::RgbaImage;
 use imageproc::geometric_transformations::warp_into_with;
 use imageproc::geometric_transformations::Interpolation;
-use std::cmp::{max, min};
+use std::cmp::min;
 
 pub mod modern_skin;
 
@@ -231,7 +231,7 @@ fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
             min(val as u32, max_val - 1)
         }
     };
-    
+
     (nearest(x, width), nearest(y, height))
 }
 
