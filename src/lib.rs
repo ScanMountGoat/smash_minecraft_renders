@@ -4,7 +4,7 @@ use image::Rgba;
 use image::RgbaImage;
 use imageproc::geometric_transformations::warp_into_with;
 use imageproc::geometric_transformations::Interpolation;
-use std::cmp::min;
+use std::cmp::{max, min};
 
 pub mod modern_skin;
 
@@ -196,7 +196,12 @@ fn blend_alpha(current: &mut RgbaImage, reference: &RgbaImage) {
         for y in 0..current.height() {
             let current = current.get_pixel_mut(x, y);
             let target = reference.get_pixel(x, y);
-            *current = Rgba([current[0], current[1], current[2], min(current[3], target[3])]);
+            *current = Rgba([
+                current[0],
+                current[1],
+                current[2],
+                min(current[3], target[3]),
+            ]);
         }
     }
 }
@@ -216,10 +221,17 @@ fn sample_texture(image: &RgbaImage, u: f32, v: f32) -> &Rgba<u8> {
 }
 
 fn interpolate_nearest(x: f32, y: f32, width: u32, height: u32) -> (u32, u32) {
-    // Nearest neighbor interpolation often performs some sort of rounding.
-    // UVs are snapped to pixel corners in the exported UV map, so just floor the UVs instead.
     // Clamp to the edges for out of bounds indices.
-    let nearest = |f: f32, max_val: u32| min((f * max_val as f32).floor() as u32, max_val - 1);
+    // Clamp to 0.0f32 before casting to avoid underflow.
+    let nearest = |f: f32, max_val: u32| {
+        let val = (f * max_val as f32 - 0.5f32).round();
+        if val < 0f32 {
+            0u32
+        } else {
+            min(val as u32, max_val - 1)
+        }
+    };
+    
     (nearest(x, width), nearest(y, height))
 }
 
