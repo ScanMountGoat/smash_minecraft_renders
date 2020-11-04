@@ -20,13 +20,15 @@ pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
     let chest_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest.png"));
     let arm_l_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l.png"));
     let arm_r_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r.png"));
-    let leg_rl_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_rl.png"));
+    let leg_r_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r.png"));
+    let leg_l_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l.png"));
 
     let mut output = ImageBuffer::new(head_uvs.dimensions().0, head_uvs.dimensions().1);
 
     // Alpha blending relies on having the correct color already present in the render buffer.
     // Steve has simple geometry, so blend layers from back to front rather than using a depth map.
-    blend_layer_with_base(&mut output, &leg_rl_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &leg_l_uvs, skin_texture);
+    blend_layer_with_base(&mut output, &leg_r_uvs, skin_texture);
     blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture);
     blend_layer_with_base(&mut output, &head_uvs, skin_texture);
     blend_layer_with_base(&mut output, &chest_uvs, skin_texture);
