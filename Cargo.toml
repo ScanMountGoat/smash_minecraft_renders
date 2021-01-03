@@ -4,12 +4,22 @@ version = "0.1.0"
 authors = ["ScanMountGoat <>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "minecraft_render"
+path = "src/main.rs"
+required-features = ["cli"]
 
 [dependencies]
 image = "0.23"
 imageproc = "0.21"
-clap = "2.33.3"
+
+clap = { version = "2.33", optional = true }
+
+[features]
+cli = ["clap"]
 
 [profile.release]
 debug = true
