@@ -4,7 +4,7 @@ A Rust library and CLI program for creating Minecraft renders for Smash Ultimate
 This code was designed for use in [smash-minecraft-skins](https://github.com/jam1garner/smash-minecraft-skins). Users wishing to create their own offline renders should consider using a dedicated 3D modeling and rendering program like Blender for better image quality, depth handling, and lighting effects.
 
 ## Overview
-Rendering relies on pregenerated input textures with `(U, V, lighting, alpha)` for the RGBA channels. Channel packing improves data locality and reduces the number of costly image sampling operations. The rendering code acts like the final screenspace pixel shader in deferred rendering where inputs are rendered to screenspace textures. This greatly simplifies the implementation but requires careful handling of render order of input images for proper depth sorting.
+Rendering relies on pregenerated input textures with `(U, V, lighting, alpha)` for the RGBA channels. Channel packing improves data locality and reduces the number of costly image sampling operations. Pregenerating the textures in an application like Blender also avoids edge and sampling artifacts that would occur if transforming planes indivudally to create the final render. The rendering code acts like the screenspace lighting calculated in the pixel shader in deferred rendering. This greatly simplifies the implementation but requires careful handling of render order of input images for proper depth sorting.
 
 ## Skin Texture Input
 The input skin textures are expected to be in the Minecraft Java layout, which is also used for Smash Ultimate. See the included `sample.png` for reference.  
