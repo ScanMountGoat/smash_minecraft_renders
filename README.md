@@ -14,10 +14,13 @@ Input textures should be precorrected using the following formula to avoid over 
 This is equivalent to a levels adjustment with highlight output set to `184` and midtone output set to `1.386` or `output.rgb = (input.rgb ^ 0.72) * 0.72`.
 
 ## Generating Correct Input Images
-### Mesh
+### Blender Mesh
+![steve legs fspy](https://github.com/ScanMountGoat/smash_minecraft_renders/assets/23301691/2f56fc28-f4d8-46ad-8aa3-0de01ff7ad23)
+Input images are generated from meshes in Blender matched to the official render. This requires matching the perspective of the camera used in the official render. Rather than match the perspective of the camera for the entire render, each portion of the model like the arm or body uses its own Blender scene with a camera matched to that specific box model using [fspy](https://fspy.io/) and its Blender addon. 
+
 ![steve_legs_blender](https://github.com/ScanMountGoat/smash_minecraft_renders/assets/23301691/97088c06-d618-438e-8938-8cadb5af9d3f)
 
-Input images are generated from meshes in Blender matched to the official render. This requires matching the perspective of the camera used in the official render. Rather than match the perspective of the camera for the entire render, each portion of the model like the arm or body uses its own Blender scene with a camera matched to that specific box model using [fspy](https://fspy.io/) and its Blender addon. The perspective of each model can be matched simply by scaling and translating a Blender cube along the appropriate axes without any rotation required. Rendering a connected mesh for each part of the model like the arm or head also avoids any seams along face boundaries that would result from simply perspective warping an image plane for each face.
+The perspective of each model can be matched simply by scaling and translating a Blender cube along the appropriate axes without any rotation required. Rendering a connected mesh for each part of the model like the arm or head also avoids any seams along face boundaries that would result from perspective warping an image plane for each face.
 
 ### UV (RG)
 The generated UV map should have vertices snapped to pixel corners and be exported without antialiasing or dithering. Filtering will negatively impact the accuracy of the texture sampling. This can be achieved in Blender by setting view transform to `Raw`, dither to `0.00`, and samples to `1`. See the provided `uvs.png` for the expected dimensions and layout. The main limitation with this approach is that the texture color uses only a single UV value and thus a single sample per pixel. The higher sample counts for other channels and bilinear filtering for the final render resizing reduce some of the visual impact of the lower sample count in practice.
