@@ -32,8 +32,7 @@ fn main() {
         )
         .arg(
             Arg::with_name("is_slim")
-                .short("i")
-                .long("i")
+                .long("slim")
                 .help("render as slim character")
                 .takes_value(false)
         )
