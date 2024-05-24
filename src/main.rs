@@ -53,7 +53,12 @@ fn main() {
 
     let start_time = Instant::now();
 
-    let output = minecraft_render::create_render_of(&skin_texture, matches.is_present("is_slim"));
+    let output = 
+        if matches.is_present("is_slim") {
+            minecraft_render::create_render_slim(&skin_texture)
+        } else {
+            minecraft_render::create_render(&skin_texture)
+        };
 
     let elapsed = start_time.elapsed();
     eprintln!("Create Render: {:?}", elapsed);
