@@ -30,6 +30,13 @@ fn main() {
                 .help("levels adjustment to match Smash Ultimate")
                 .takes_value(false),
         )
+        .arg(
+            Arg::with_name("is_slim")
+                .short("i")
+                .long("i")
+                .help("render as slim character")
+                .takes_value(false)
+        )
         .get_matches();
 
     let texture_path = matches.value_of("skin").unwrap();
@@ -46,7 +53,7 @@ fn main() {
 
     let start_time = Instant::now();
 
-    let output = minecraft_render::create_render(&skin_texture);
+    let output = minecraft_render::create_render_of(&skin_texture, matches.is_present("is_slim"));
 
     let elapsed = start_time.elapsed();
     eprintln!("Create Render: {:?}", elapsed);

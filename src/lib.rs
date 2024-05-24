@@ -9,65 +9,129 @@ use std::cmp::min;
 pub mod modern_skin;
 
 /// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
-pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
+pub fn create_render_of(skin_texture: &RgbaImage, is_alex: bool) -> RgbaImage {
     // At least 16 bit precision is required for the texture sampling to look decent.
     let load_rgba_u16 = |buffer| match image::load_from_memory(buffer).unwrap() {
         DynamicImage::ImageRgba16(image_buffer) => image_buffer,
         _ => panic!("Expected RGBA 16 bit for UVs"),
     };
-
-    let head_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head.png"));
-    let chest_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest.png"));
-    let arm_l_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l.png"));
-    let arm_r_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r.png"));
-    let leg_r_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r.png"));
-    let leg_l_uvs = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l.png"));
+    
+    let head_uvs = 
+        if is_alex { 
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/head.png"))
+        } else {
+            
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head.png"))
+        };
+    let chest_uvs = 
+        if is_alex { 
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/chest.png"))
+        } else {
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest.png"))
+        };
+    let arm_l_uvs = 
+        if is_alex { 
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/arm_l.png"))
+        } else {
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l.png"))
+        };
+    let arm_r_uvs = 
+        if is_alex { 
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/arm_r.png"))
+        } else {
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r.png"))
+        };
+    let leg_l_uvs = 
+        if is_alex { 
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/leg_l.png"))
+        } else {
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l.png"))
+        };
+    let leg_r_uvs = 
+        if is_alex { 
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/leg_r.png"))
+        } else {
+            load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r.png"))
+        };
 
     let mut output = ImageBuffer::new(head_uvs.dimensions().0, head_uvs.dimensions().1);
 
     // Alpha blending relies on having the correct color already present in the render buffer.
     // Steve has simple geometry, so blend layers from back to front rather than using a depth map.
-    blend_layer_with_base(&mut output, &leg_l_uvs, skin_texture);
-    blend_layer_with_base(&mut output, &leg_r_uvs, skin_texture);
     blend_layer_with_base(&mut output, &arm_l_uvs, skin_texture);
-    blend_layer_with_base(&mut output, &head_uvs, skin_texture);
-    blend_layer_with_base(&mut output, &chest_uvs, skin_texture);
 
     // Skip costly image loading and blending for regions with fully transparent pixels.
     // Assume the base layers are always used.
     if has_pixel_in_region(&skin_texture, 0.75f32, 1.0f32, 0.75f32, 1.0f32) {
-        let arm_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l2.png"));
+        let arm_l_uvs2 = 
+            if is_alex { 
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/arm_l2.png"))
+            } else {
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_l2.png"))
+            };
         blend_layer_with_base(&mut output, &arm_l_uvs2, skin_texture);
     }
-
-    if has_pixel_in_region(&skin_texture, 0.25f32, 0.625f32, 0.5f32, 0.75f32) {
-        let chest_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest2.png"));
-        blend_layer_with_base(&mut output, &chest_uvs2, skin_texture);
-    }
-
-    if has_pixel_in_region(&skin_texture, 0.5f32, 1.0f32, 0.0f32, 0.25f32) {
-        let head_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head2.png"));
-        blend_layer_with_base(&mut output, &head_uvs2, skin_texture);
-    }
-
+    blend_layer_with_base(&mut output, &leg_l_uvs, skin_texture);
     if has_pixel_in_region(&skin_texture, 0.0f32, 0.25f32, 0.75f32, 1.0f32) {
-        let leg_l_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l2.png"));
+        let leg_l_uvs2 = 
+            if is_alex { 
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/leg_l2.png"))
+            } else {
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_l2.png"))
+            };
         blend_layer_with_base(&mut output, &leg_l_uvs2, skin_texture);
     }
 
+    blend_layer_with_base(&mut output, &leg_r_uvs, skin_texture);
     if has_pixel_in_region(&skin_texture, 0.0f32, 0.25f32, 0.5f32, 0.75f32) {
-        let leg_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r2.png"));
+        let leg_r_uvs2 = 
+            if is_alex { 
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/leg_r2.png"))
+            } else {
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/leg_r2.png"))
+            };
         blend_layer_with_base(&mut output, &leg_r_uvs2, skin_texture);
     }
 
+
+
+    blend_layer_with_base(&mut output, &chest_uvs, skin_texture);
+    if has_pixel_in_region(&skin_texture, 0.25f32, 0.625f32, 0.5f32, 0.75f32) {
+        let chest_uvs2 = 
+            if is_alex { 
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/chest2.png"))
+            } else {
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/chest2.png"))
+            };
+        blend_layer_with_base(&mut output, &chest_uvs2, skin_texture);
+    }
+
+    blend_layer_with_base(&mut output, &head_uvs, skin_texture);
+    if has_pixel_in_region(&skin_texture, 0.5f32, 1.0f32, 0.0f32, 0.25f32) {
+        let head_uvs2 = 
+            if is_alex { 
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/head2.png"))
+            } else {
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/head2.png"))
+            };
+        blend_layer_with_base(&mut output, &head_uvs2, skin_texture);
+    }
     blend_layer_with_base(&mut output, &arm_r_uvs, skin_texture);
 
     if has_pixel_in_region(&skin_texture, 0.625f32, 0.875f32, 0.5f32, 0.75f32) {
-        let arm_r_uvs2 = load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r2.png"));
+        let arm_r_uvs2 = 
+            if is_alex { 
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/alex/arm_r2.png"))
+            } else {
+                load_rgba_u16(include_bytes!("../images/uv_lighting_alpha/arm_r2.png"))
+            };
         blend_layer_with_base(&mut output, &arm_r_uvs2, skin_texture);
     }
-
     output
+}
+
+pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
+    create_render_of(skin_texture, false)
 }
 
 /// Creates a render with the dimensions and alpha of the reference chara file
