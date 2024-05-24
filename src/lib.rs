@@ -8,8 +8,7 @@ use std::cmp::min;
 
 pub mod modern_skin;
 
-/// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
-fn create_render_of(skin_texture: &RgbaImage, is_alex: bool) -> RgbaImage {
+fn create_render_inner(skin_texture: &RgbaImage, is_alex: bool) -> RgbaImage {
     // At least 16 bit precision is required for the texture sampling to look decent.
     let load_rgba_u16 = |buffer| match image::load_from_memory(buffer).unwrap() {
         DynamicImage::ImageRgba16(image_buffer) => image_buffer,
@@ -130,12 +129,14 @@ fn create_render_of(skin_texture: &RgbaImage, is_alex: bool) -> RgbaImage {
     output
 }
 
+/// Creates a Smash Ultimate Minecraft Steve inspired render from the given Minecraft skin texture.
 pub fn create_render(skin_texture: &RgbaImage) -> RgbaImage {
-    create_render_of(skin_texture, false)
+    create_render_inner(skin_texture, false)
 }
 
+/// Creates a Smash Ultimate Minecraft Alex inspired render from the given Minecraft skin texture.
 pub fn create_render_slim(skin_texture: &RgbaImage) -> RgbaImage {
-    create_render_of(skin_texture, true)
+    create_render_inner(skin_texture, true)
 }
 
 /// Creates a render with the dimensions and alpha of the reference chara file
