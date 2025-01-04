@@ -23,7 +23,7 @@ fn copy_flipped(
         to_y,
     );
 
-    image::imageops::flip_horizontal_in_place(&mut image.sub_image(to_x, to_y, width, height));
+    image::imageops::flip_horizontal_in_place(&mut *image.sub_image(to_x, to_y, width, height));
 }
 
 /// Copy from one area to another, shift horizontally (with wrapping) N pixels, then flip the resulting area
@@ -60,7 +60,7 @@ fn copy_rotated_right_flipped(
         to_y,
     );
 
-    image::imageops::flip_horizontal_in_place(&mut image.sub_image(to_x, to_y, width, height));
+    image::imageops::flip_horizontal_in_place(&mut *image.sub_image(to_x, to_y, width, height));
 }
 
 pub fn convert_to_modern_skin(skin_data: &image::RgbaImage) -> image::RgbaImage {
